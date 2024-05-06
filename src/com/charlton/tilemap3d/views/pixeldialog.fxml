@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="177.0" prefWidth="165.0" xmlns="http://javafx.com/javafx/11.0.1"
+            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.charlton.tilemap3d.controllers.PixelDialogController">
+   <DialogPane fx:id="dialogPane" prefHeight="231.0" prefWidth="165.0">
+      <header>
+         <Label depthTest="DISABLE" text="Pixel Demonsions">
+            <padding>
+               <Insets bottom="8.0" left="8.0" right="8.0" top="8.0"/>
+            </padding>
+         </Label>
+      </header>
+      <content>
+         <Pane prefHeight="170.0" prefWidth="165.0">
+            <TextField fx:id="tPixelWidth" layoutX="14.0" layoutY="23.0" prefHeight="27.0" prefWidth="136.0"/>
+            <Label layoutX="14.0" layoutY="6.0" text="Pixel Width"/>
+            <TextField fx:id="tPixelHeight" layoutX="14.0" layoutY="75.0" prefHeight="27.0" prefWidth="134.0"/>
+            <Label layoutX="14.0" layoutY="56.0" text="Pixel Height"/>
+            <Button fx:id="submitBtn" layoutX="14.0" layoutY="111.0" mnemonicParsing="false" prefHeight="27.0"
+                    prefWidth="133.0" text="Set"/>
+            <Button fx:id="cancelBtn" layoutX="15.0" layoutY="147.0" mnemonicParsing="false" prefHeight="27.0"
+                    prefWidth="131.0" text="Cancel"/>
+         </Pane>
+      </content>
+   </DialogPane>
+</AnchorPane>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.canvas.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.charlton.tilemap3d.controllers.MainViewController">
+    <children>
+        <MenuBar>
+            <menus>
+                <Menu mnemonicParsing="false" text="File">
+                    <items>
+                        <MenuItem fx:id="newMenuItem" mnemonicParsing="false" text="New" />
+                        <MenuItem fx:id="openMenuItem" mnemonicParsing="false" text="Open" />
+                        <MenuItem fx:id="saveMenuItem" mnemonicParsing="false" text="Save" />
+                        <MenuItem fx:id="closeMenuItem" mnemonicParsing="false" text="Close" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="Edit">
+                    <items>
+                        <MenuItem fx:id="retileMenuItem" mnemonicParsing="false" text="ReTile" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="Help">
+                    <items>
+                        <MenuItem mnemonicParsing="false" text="About" />
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+        <HBox layoutY="30.0" prefHeight="600.0" prefWidth="1200.0">
+                <Canvas fx:id="map_canvas" height="600.0" width="600.0">
+
+                </Canvas>
+
+            <ScrollPane focusTraversable="true" minViewportHeight="600.0" minViewportWidth="400.0">
+                <Canvas fx:id="tile_canvas" height="600.0" width="400.0">
+
+                </Canvas>
+            </ScrollPane>
+            <Pane minHeight="600" minWidth="200.0">
+                <children>
+                    <ComboBox fx:id="jCollisionComboBox" layoutX="14.0" layoutY="41.0" prefHeight="27.0"
+                              prefWidth="172.0" promptText="Collision..."/>
+                    <Label fx:id="jTileOptions" layoutX="14.0" layoutY="14.0" text="Tile Options:"/>
+                    <ComboBox fx:id="jObjectComboBox" layoutX="14.0" layoutY="75.0" prefHeight="27.0" prefWidth="172.0"
+                              promptText="Is Object"/>
+                    <ComboBox fx:id="jForegroundComboBox" layoutX="14.0" layoutY="110.0" prefHeight="27.0"
+                              prefWidth="172.0" promptText="Foreground"/>
+                </children>
+            </Pane>
+        </HBox>
+    </children>
+</VBox>
