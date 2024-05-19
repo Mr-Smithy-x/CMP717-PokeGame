@@ -40,6 +40,7 @@ class SceneManager : Renderable {
     fun setCurrentScene(sceneName: SceneType) {
         this.currentScene = sceneName
         getCurrent()?.let { scene: Scene ->
+            scene.onEnter()
             GlobalSoundTrack.setTrack(scene)
         }
     }

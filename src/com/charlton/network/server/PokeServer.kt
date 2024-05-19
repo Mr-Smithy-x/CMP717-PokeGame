@@ -1,6 +1,7 @@
 package com.charlton.network.server
 
 import com.charlton.network.client.PokeClient
+import com.charlton.network.cmds.CMD
 import com.charlton.network.models.NetworkState.PokePlayerState
 import java.io.IOException
 import java.net.ServerSocket
@@ -52,26 +53,25 @@ class PokeServer : Runnable {
     }
 
     fun disconnected(pokeClient: PokeClient) {
-        var id = -1
-        client.forEach {
-            if (it.value.id != pokeClient.id) {
-                it.value.writeInt(PokeClientHandler.CMD.CLIENT_DISCONNECTED.ordinal)
-                it.value.writeInt(pokeClient.id)
-            } else {
-                id = it.key
+        if(pokeClient.player == null) return
+        println("DISCONNECTED ID: ${pokeClient.id}")
+        client.forEach { c ->
+            if (c.value.id != pokeClient.id) {
+                pokeClient.onPlayerDisconnected(pokeClient.player!!)
             }
         }
-        client.remove(id)
+        client.remove(pokeClient.id)
+        pokeClient.close()
     }
 
     fun update(info: PokePlayerState) {
         client[info.id]?.updatePlayer(info)
         client.values.forEach {
             if(it.id != info.id) {
-                it.writeInt(PokeClientHandler.CMD.UPDATE_CLIENT.ordinal)
+                it.writeInt(CMD.UPDATE_CLIENT.ordinal)
                 it.writeObject(info)
 
-                client[info.id]?.writeInt(PokeClientHandler.CMD.UPDATE_CLIENT.ordinal)
+                client[info.id]?.writeInt(CMD.UPDATE_CLIENT.ordinal)
                 client[info.id]?.writeObject(it.player)
             }
         }

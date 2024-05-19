@@ -9,6 +9,8 @@ import com.charlton.gameengine.world.scenes.Scene
 import com.charlton.gameengine.world.scenes.SceneManager
 import com.charlton.gameengine.world.scenes.SceneType
 import com.charlton.network.client.PokeGameClient
+import com.charlton.network.cmds.NetworkItem
+import com.charlton.network.cmds.Offense
 import com.charlton.pokemon.Global
 import com.charlton.pokemon.models.ClientEnemyPlayer
 import com.charlton.pokemon.models.EnemyPlayer
@@ -17,18 +19,22 @@ import com.charlton.pokemon.sound.GlobalSoundEffect
 import com.charlton.pokemon.sound.GlobalSoundTrack
 import java.awt.Graphics
 import java.awt.event.KeyEvent
-import java.io.Serializable
 
-data class SendOffense(val to: Int, val move: Pokemon.Move, val damage: Int = 0): Serializable
-data class RecvOffense(val from: Int, val move: Pokemon.Move, val damage: Int = 0): Serializable
-
-class BattleScene private constructor(sceneable: SceneManager.Sceneable, private val enemy: EnemyPlayer) : Scene(sceneable) {
+class BattleScene private constructor(
+    sceneable: SceneManager.Sceneable,
+    private val enemy: EnemyPlayer,
+    var fromScene: SceneType
+) : Scene(sceneable) {
 
     val isClient get() = enemy is ClientEnemyPlayer
 
+    fun getEnemy() = enemy
+
+    fun getClientEnemy(): ClientEnemyPlayer = enemy as ClientEnemyPlayer
+
     companion object {
-        fun create(sceneable: SceneManager.Sceneable, enemy: EnemyPlayer): BattleScene {
-            return BattleScene(sceneable, enemy)
+        fun create(sceneable: SceneManager.Sceneable, enemy: EnemyPlayer, fromScene: SceneType): BattleScene {
+            return BattleScene(sceneable, enemy, fromScene)
         }
     }
 
@@ -37,7 +43,8 @@ class BattleScene private constructor(sceneable: SceneManager.Sceneable, private
         box.setText("What should\n${Global.player.name} do?")
     }
 
-    fun initialize(enemy: EnemyPlayer) {
+    fun initialize(enemy: EnemyPlayer, name: SceneType) {
+        this.fromScene = name
         enemyLifeHudComponent = EnemyPokemonHudComponent(enemy)
         enemyPkmnSprite = EnemyPokemonComponent(enemy)
         myPokemonHudComponent = MyPokemonHudComponent(Global.player.currentSelectedPokemon)
@@ -50,23 +57,48 @@ class BattleScene private constructor(sceneable: SceneManager.Sceneable, private
     private var myPokemonHudComponent = MyPokemonHudComponent(Global.player.currentSelectedPokemon)
     private var pkmnSprite = PokemonComponent(Global.player.currentSelectedPokemon)
     private var attackOptions = AttackOptionComponent(Global.player.currentSelectedPokemon)
+    private var bagOptions = BagOptionComponent()
 
     private val box = BattleBoxMessage()
     private val options = BattleBoxOption()
-    private val inventoryComponent = InventoryComponent()
     private val pkmnSelectionComponent = InventoryComponent()
     var state: BattleState = BattleState.START
 
     override val name = SceneType.Battle
 
     init {
-        initialize(enemy)
+        initialize(enemy, fromScene)
         resetState()
     }
 
-    override fun onDebugDraw(g: Graphics) {
-
+    override fun setHidden() {
+        HudManager.setHidden(LifeHud)
+        HudManager.setHidden(EnergyHud)
     }
+
+    override fun setVisible() = Unit
+
+    override fun manual(keys: BooleanArray, typedKey: BooleanArray) {
+        val state = when (state) {
+            BattleState.START -> handleBattleStateStart(keys, typedKey)
+            BattleState.WIN, BattleState.LOSE -> {
+                if (keys[KeyEvent.VK_ENTER] && typedKey[KeyEvent.VK_ENTER]) {
+                    TransitionManager.trigger()
+                    BattleState.END
+                } else null
+            }
+
+            is BattleState.AWAIT -> handleBattleStateAwait(keys, typedKey)
+            BattleState.END -> null
+            is BattleState.Attack -> handleAttackAfterMath(keys, typedKey)
+            is BattleState.Choice -> handleBattleStateChoice(keys, typedKey)
+            is BattleState.Bag -> handleBattleOptionBagUsed(keys, typedKey)
+        }
+        if (state != null) {
+            this.state = state
+        }
+    }
+
 
     private fun handleBattleStateStart(keys: BooleanArray, typedKey: BooleanArray): BattleState? {
         if ((keys[KeyEvent.VK_LEFT] || keys[KeyEvent.VK_A])) {
@@ -129,12 +161,69 @@ class BattleScene private constructor(sceneable: SceneManager.Sceneable, private
         return null
     }
 
+    private fun handleBattleOptionBag(keys: BooleanArray, typedKey: BooleanArray): BattleState? {
+
+
+        if ((keys[KeyEvent.VK_UP] || keys[KeyEvent.VK_W])) {
+            bagOptions.setSelection(attackOptions.rowSelection - 1)
+        }
+        if ((keys[KeyEvent.VK_DOWN] || keys[KeyEvent.VK_S])) {
+            bagOptions.setSelection(attackOptions.rowSelection + 1)
+        }
+
+        if ((keys[KeyEvent.VK_ESCAPE] || keys[KeyEvent.VK_DELETE])) {
+            return BattleState.START
+        }
+
+        if (keys[KeyEvent.VK_ENTER] && typedKey[KeyEvent.VK_ENTER]) {
+
+            val selection: Item = bagOptions.getSelection()
+            box.setText("${myPokemonHudComponent.pokemon.name} used ${selection.name}!")
+            return BattleState.Bag(selection) //(selection)
+        }
+        return null
+    }
+
+    private fun handleBattleOptionPokemon(keys: BooleanArray, typedKey: BooleanArray): BattleState? {
+
+        if ((keys[KeyEvent.VK_LEFT] || keys[KeyEvent.VK_A])) {
+
+            attackOptions.setSelection(attackOptions.rowSelection, attackOptions.columnSelection - 1)
+        }
+        if ((keys[KeyEvent.VK_RIGHT] || keys[KeyEvent.VK_D])) {
+
+            attackOptions.setSelection(attackOptions.rowSelection, attackOptions.columnSelection + 1)
+        }
+
+        if ((keys[KeyEvent.VK_UP] || keys[KeyEvent.VK_W])) {
+
+            attackOptions.setSelection(attackOptions.rowSelection - 1, attackOptions.columnSelection)
+        }
+        if ((keys[KeyEvent.VK_DOWN] || keys[KeyEvent.VK_S])) {
+
+            attackOptions.setSelection(attackOptions.rowSelection + 1, attackOptions.columnSelection)
+        }
+
+        if ((keys[KeyEvent.VK_ESCAPE] || keys[KeyEvent.VK_DELETE])) {
+
+            return BattleState.START
+        }
+
+        if (keys[KeyEvent.VK_ENTER] && typedKey[KeyEvent.VK_ENTER]) {
+
+            val selection: Pokemon.Move = attackOptions.getSelection()
+            box.setText("${myPokemonHudComponent.pokemon.name} used ${attackOptions.getSelection().name}!")
+            return BattleState.Attack(selection)
+        }
+        return null
+    }
+
     private fun handleBattleStateChoice(keys: BooleanArray, typedKey: BooleanArray): BattleState? {
         val choice = state as BattleState.Choice
         val state = when (choice.option) {
             BattleBoxOption.BattleOption.FIGHT -> handleBattleOptionFight(keys, typedKey)
-            BattleBoxOption.BattleOption.BAG -> null
-            BattleBoxOption.BattleOption.POKEMON -> null
+            BattleBoxOption.BattleOption.BAG -> handleBattleOptionBag(keys, typedKey)
+            BattleBoxOption.BattleOption.POKEMON -> handleBattleOptionPokemon(keys, typedKey)
             BattleBoxOption.BattleOption.RUN -> {
                 if (keys[KeyEvent.VK_ENTER] && typedKey[KeyEvent.VK_ENTER]) {
                     TransitionManager.trigger()
@@ -153,19 +242,25 @@ class BattleScene private constructor(sceneable: SceneManager.Sceneable, private
         enemyLifeHudComponent.pokemon.damage(healthDamage)
         Thread.sleep(1000)
 
-        if(isClient) {
-            PokeGameClient.sendOffense(SendOffense((enemy as ClientEnemyPlayer).id, move, damage = healthDamage))
+        if (isClient) {
+            PokeGameClient.sendOffense(
+                Offense.Send(
+                    (enemy as ClientEnemyPlayer).id,
+                    move,
+                    damage = healthDamage
+                )
+            )
         }
 
         if (enemyLifeHudComponent.pokemon.health <= 0) {
             box.setText("${enemyLifeHudComponent.pokemon.name} Fainted!")
             Thread.sleep(1000)
-            if(enemy.canFight()) {
+            if (enemy.canFight()) {
                 box.setText("${enemy.name} called out\n${myPokemonHudComponent.pokemon.name} ")
                 Thread.sleep(1000)
                 //box.setText("What should\n${myPokemonHudComponent.pokemon.name} do?")
                 box.setText("Waiting for players turn")
-                return BattleState.AWAIT
+                return BattleState.AWAIT(BattleStateEnum.DEFEATED)
             } else {
                 GlobalSoundTrack.setTrack(GlobalSoundTrack.Track.WILD_VICTORY)
                 box.setText("${myPokemonHudComponent.pokemon.name} gained 234 exp!")
@@ -173,81 +268,63 @@ class BattleScene private constructor(sceneable: SceneManager.Sceneable, private
                 return BattleState.WIN
             }
         } else {
-            //box.setText("What should\n${myPokemonHudComponent.pokemon.name} do?")
-            //return BattleState.START
             box.setText("Waiting for players turn...")
-            return BattleState.AWAIT
+            return BattleState.AWAIT(BattleStateEnum.NONE)
         }
     }
 
-    override fun manual(keys: BooleanArray, typedKey: BooleanArray) {
-        val state = when (state) {
-            BattleState.START -> handleBattleStateStart(keys, typedKey)
-            BattleState.WIN -> {
-                if (keys[KeyEvent.VK_ENTER] && typedKey[KeyEvent.VK_ENTER]) {
-                    TransitionManager.trigger()
-                    BattleState.END
-                } else null
-            }
-            BattleState.LOSE -> if (keys[KeyEvent.VK_ENTER] && typedKey[KeyEvent.VK_ENTER]) {
-                TransitionManager.trigger()
-                BattleState.END
-            } else null
-            BattleState.AWAIT -> handleBattleStateAwait(keys, typedKey)
-            BattleState.END -> null
-            is BattleState.Attack -> handleAttackAfterMath(keys, typedKey)
-            is BattleState.Choice -> handleBattleStateChoice(keys, typedKey)
-            is BattleState.Bag -> null
+    private fun handleBattleOptionBagUsed(keys: BooleanArray, typedKey: BooleanArray): BattleState {
+        GlobalSoundEffect.play(GlobalSoundEffect.SOUND.ATTACK_NORMAL)
+        val item = bagOptions.getSelection()
+        val response = myPokemonHudComponent.pokemon.consume(item)
+
+        Thread.sleep(1000)
+
+        if (isClient) {
+            PokeGameClient.sendItem(
+                NetworkItem.Send(
+                    (enemy as ClientEnemyPlayer).id,
+                    item,
+                    response
+                )
+            )
         }
-        if (state != null) {
-            this.state = state
-        }
+        box.setText(response)
+        Thread.sleep(3000)
+        PokeGameClient.update(Global.player)
+        box.setText("Waiting for players turn...")
+        return BattleState.AWAIT()
     }
 
     private fun handleBattleStateAwait(keys: BooleanArray, typedKey: BooleanArray): BattleState {
-        if(isClient) {
-            return BattleState.AWAIT
+        if (isClient) {
+            return BattleState.AWAIT()
         }
 
-        if (keys[KeyEvent.VK_ENTER] && typedKey[KeyEvent.VK_ENTER]) {
-            box.setText("${enemy.currentSelectedPokemon.name} is setting up\nfor an attack!")
-            Thread.sleep(1000)
+        if((state as BattleState.AWAIT).state != BattleStateEnum.DEFEATED) {
             val move = enemy.currentSelectedPokemon.learnedMoves.random()
             box.setText("${enemy.currentSelectedPokemon.name} used\n${move.name}")
+            Global.player.currentSelectedPokemon.damage(move.damage / 2)
             Thread.sleep(2000)
-            Global.player.currentSelectedPokemon.damage(move.damage/2)
-            Thread.sleep(1000)
-            return BattleState.START
+        } else {
+            Thread.sleep(2000)
         }
-
-        return BattleState.AWAIT
+        return BattleState.START
     }
+
     override fun automate() {
-        //GlobalSoundTrack.play()
+        GlobalSoundTrack.play()
     }
-
-
-    override fun setHidden() {
-        HudManager.setHidden(LifeHud)
-        HudManager.setHidden(EnergyHud)
-    }
-
-    override fun setVisible() {
-
-    }
-
 
     override fun render(g: Graphics) {
         pkmnSprite.render(g)
         enemyPkmnSprite.render(g)
         box.render(g)
-        if(myPokemonHudComponent.pokemon.health <= 0) {
-            //state = BattleState.LOSE
-        }
         when (state) {
-            BattleState.AWAIT -> {
+            is BattleState.AWAIT -> {
 
             }
+
             BattleState.START -> {
 
                 box.setText("What should\n${myPokemonHudComponent.pokemon.name} do?")
@@ -277,7 +354,7 @@ class BattleScene private constructor(sceneable: SceneManager.Sceneable, private
                     }
 
                     BattleBoxOption.BattleOption.BAG -> {
-                        inventoryComponent.render(g)
+                        bagOptions.render(g)
                     }
 
                     BattleBoxOption.BattleOption.POKEMON -> {
@@ -296,81 +373,17 @@ class BattleScene private constructor(sceneable: SceneManager.Sceneable, private
                         sceneable.manager.setCurrentScene(tile!!.name)
                     }
                 }
-                TransitionManager.setFor(sceneable.manager.getScene(SceneType.Default))
+                TransitionManager.setFor(sceneable.manager.getScene(fromScene))
             }
         }
         enemyLifeHudComponent.render(g)
         myPokemonHudComponent.render(g)
     }
 
+    override fun onDebugDraw(g: Graphics) {
+
+    }
+
     override val mainTrack: GlobalSoundTrack.Track = GlobalSoundTrack.Track.WILD_BATTLE
-
-    sealed class BattleState {
-        data object START : BattleState()
-        data object END : BattleState()
-        data object WIN : BattleState()
-        data object LOSE : BattleState()
-        data object AWAIT : BattleState()
-
-        data class Choice(val option: BattleBoxOption.BattleOption, val index: Int) : BattleState()
-        data class Attack(var move: Pokemon.Move) : BattleState()
-        data class Bag(var item: Item) : BattleState()
-    }
-
-    data class Item(
-        val name: String = "Potion",
-        val type: ItemType = ItemType.HP,
-        val points: Int = 20,
-        var quantity: Int = 1
-    ) {
-
-        fun use(pokemon: Pokemon): Boolean {
-            if (quantity > 0) {
-                quantity--
-                return when (type) {
-                    ItemType.HP -> {
-                        pokemon.heal(points)
-                        true
-                    }
-
-                    ItemType.ATTACK -> {
-                        pokemon.stats.setTempAttack(points)
-                        true
-                    }
-
-                    ItemType.DEFENSE -> {
-                        pokemon.stats.setTempDefense(points)
-                        true
-                    }
-
-                    ItemType.SP_ATTACK -> {
-                        pokemon.stats.setTempSpAttack(points)
-                        true
-                    }
-
-                    ItemType.SP_DEFENSE -> {
-                        pokemon.stats.setTempSpDefense(points)
-                        true
-                    }
-
-                    ItemType.SPEED -> {
-                        pokemon.stats.setTempSpeed(points)
-                        true
-                    }
-                }
-            }
-            return false
-        }
-
-        enum class ItemType {
-            HP,
-            ATTACK,
-            DEFENSE,
-            SP_ATTACK,
-            SP_DEFENSE,
-            SPEED
-        }
-
-    }
 
 }

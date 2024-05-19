@@ -8,7 +8,7 @@ import java.net.Socket
 
 abstract class Client(protected open val socket: Socket): ClientStreamReadWriter {
 
-    val isConnected get() = socket.isConnected
+    val isConnected get() = socket.isConnected && !socket.isInputShutdown
 
     val isClosed get() = socket.isClosed
 
@@ -47,6 +47,14 @@ abstract class Client(protected open val socket: Socket): ClientStreamReadWriter
         val os = ObjectOutputStream(outputStream)
         os.writeObject(obj)
         os.flush()
+    }
+
+    fun close(){
+        try {
+            socket.close()
+        }catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
 }

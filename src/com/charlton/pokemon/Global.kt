@@ -1,6 +1,5 @@
 package com.charlton.pokemon
 
-import com.charlton.gameengine.GameContainer
 import com.charlton.pokemon.models.MainPlayer
 
 object Global {

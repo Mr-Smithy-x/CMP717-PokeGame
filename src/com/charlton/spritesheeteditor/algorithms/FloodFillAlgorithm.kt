@@ -53,7 +53,11 @@ object FloodFillAlgorithm {
     }
 
     private fun isTransparent(image: BufferedImage, x: Double, y: Double): Boolean {
-        return peekColor(image, x, y).alpha == 0
+        return try {
+            peekColor(image, x, y).alpha == 0
+        }catch(e: Exception) {
+            true
+        }
     }
 
     private fun peekColor(image: BufferedImage, x: Double, y: Double): Color {

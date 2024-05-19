@@ -1,7 +1,9 @@
 package com.charlton.pokemon.models
 
 import com.charlton.gameengine.models.ImageObject
+import com.charlton.network.cmds.NetworkItem
 import com.charlton.network.models.NetworkState.PokemonState
+import com.charlton.pokemon.scene.battle.Item
 import java.awt.Color
 import java.awt.Graphics
 import java.awt.Image
@@ -102,6 +104,39 @@ data class Pokemon(
 
     fun setLevel(level: Int) {
         this._level = level
+    }
+
+    fun consume(recvItem: NetworkItem.Recv): String {
+        return consume(recvItem.item)
+    }
+
+    fun consume(item: Item): String {
+        return when (item.type) {
+            Item.ItemType.HP -> {
+                heal(item.points)
+                "$name healed up by\n${item.points}!"
+            }
+            Item.ItemType.ATTACK -> {
+                stats.attack += item.points
+                "$name increased att by\n${item.points}!"
+            }
+            Item.ItemType.DEFENSE -> {
+                stats.defense += item.points
+                "$name increased def by\n${item.points}!"
+            }
+            Item.ItemType.SP_ATTACK -> {
+                stats.specialAttack += item.points
+                "$name increased sp att by\n${item.points}!"
+            }
+            Item.ItemType.SP_DEFENSE -> {
+                stats.specialDefense += item.points
+                "$name increased sp def by\n${item.points}!"
+            }
+            Item.ItemType.SPEED -> {
+                stats.speed += item.points
+                "$name increased speed by\n${item.points}!"
+            }
+        }
     }
 
 

@@ -1,20 +1,14 @@
 package com.charlton.pokemon.models
 
 import com.charlton.gameengine.exts.to3dCameraF
-import com.charlton.gameengine.models.*
-import com.charlton.gameengine.world.scenes.SceneType
-import com.charlton.network.client.PokeGameClient
-import com.charlton.network.models.NetworkState
-import com.charlton.network.models.NetworkState.PokePlayerState
-import com.charlton.pokemon.Global
+import com.charlton.gameengine.models.AnimatedSprite
 import com.charlton.spritesheeteditor.models.PoseFileFormat
 import java.awt.Color
 import java.awt.Graphics
 import java.io.Serializable
 
 
-open class Player(open val name: String = "CJ", pose: PoseFileFormat) :
-    AnimatedSprite(pose, 0, 0, 1.0, 64), Serializable {
+open class Player(open val name: String = "CJ", pose: PoseFileFormat) : AnimatedSprite(pose, 0, 0, 1.0, 64), Serializable {
 
     private var _selectedPokemon = 0
     private var _pokemon = mutableListOf<Pokemon>()

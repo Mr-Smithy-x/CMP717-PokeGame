@@ -52,7 +52,6 @@ abstract class BaseSound {
         if (!actualClip.isActive || force) {
             actualClip.framePosition = 0
             actualClip.setLoopPoints(0, -1)
-            if(true) return
             actualClip.start()
         }
     }

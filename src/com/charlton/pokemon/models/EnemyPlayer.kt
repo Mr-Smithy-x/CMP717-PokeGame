@@ -1,7 +1,7 @@
 package com.charlton.pokemon.models
 
+import com.charlton.gameengine.camera.BaseCamera
 import com.charlton.gameengine.world.scenes.SceneType
-import com.charlton.network.client.PokeGameClient
 import com.charlton.network.models.NetworkState
 import com.charlton.network.models.NetworkState.PokePlayerState
 import com.charlton.pokemon.Global
@@ -18,9 +18,13 @@ data class ClientEnemyPlayer(var id: Int = -1, override val name: String = "Clie
     val sceneState: NetworkState.SceneState
         get() {
             return _sceneState ?: NetworkState.SceneState(
-                (Global.game.world.manager.currentScene ?: SceneType.Default).id
+                (Global.game.world.manager.currentScene ?: SceneType.SandScene).id
             )
         }
+
+    override fun canRender(camera: BaseCamera): Boolean {
+        return super.canRender(camera) && sceneState.id == Global.player.sceneState.id
+    }
 
     override fun canFight(): Boolean {
         return super.canFight() && sceneState.id != SceneType.Battle.id

@@ -1,6 +1,9 @@
-package com.charlton.pokemon.scene.gym
+package com.charlton.pokemon.scene
 
 import com.charlton.gameengine.exts.to3dCameraF
+import com.charlton.gameengine.huds.EnergyHud
+import com.charlton.gameengine.huds.HudManager
+import com.charlton.gameengine.huds.LifeHud
 import com.charlton.gameengine.models.ImageObject
 import com.charlton.gameengine.utils.TransitionManager
 import com.charlton.gameengine.world.scenes.Scene
@@ -13,54 +16,85 @@ import com.charlton.network.cmds.Battle
 import com.charlton.pokemon.Global
 import com.charlton.pokemon.models.ClientEnemyPlayer
 import com.charlton.pokemon.models.EnemyPlayer
-import com.charlton.pokemon.scene.SandSceneOne.BattleQuestionState
-import com.charlton.pokemon.scene.Dialog
 import com.charlton.pokemon.scene.battle.BattleScene
+import com.charlton.pokemon.scene.gym.GymScene
 import com.charlton.pokemon.sound.GlobalSoundTrack
+import com.charlton.pokemon.world.takeRandom
 import java.awt.Graphics
 import java.awt.event.KeyEvent
-import java.io.File
-import java.io.FileInputStream
-import java.io.IOException
-import java.io.ObjectInputStream
+import java.io.*
 import kotlin.random.Random
 
-class GymScene(
-    sceneable: SceneManager.Sceneable,
-    val enemies: ArrayList<EnemyPlayer>,
-    private val badge: String = "01",
-    override val mainTrack: GlobalSoundTrack.Track = GlobalSoundTrack.Track.DEWFORD_TOWN
-) : Scene(sceneable) {
+open class SandSceneTwo(sceneable: SceneManager.Sceneable, private val enemies: ArrayList<EnemyPlayer>) :
+    Scene(sceneable) {
 
-    override val map: TileMap = loadOverlayMap("assets/tiles/gym_$badge.tilemap")!!
+    override val map: TileMap = loadOverlayMap("assets/tiles/sand_map_01.tilemap")!!
+
+    override val mainTrack: GlobalSoundTrack.Track = GlobalSoundTrack.Track.ROUTE119
+
+    override val name: SceneType = SceneType.SandSceneTwo
+
+    private var gymEnemies = arrayListOf<EnemyPlayer>()
 
     private var state: BattleQuestionState = BattleQuestionState.None
 
-    override fun onDebugDraw(g: Graphics) {
-        //TODO("Not yet implemented")
+    sealed class BattleQuestionState : Serializable {
+        data object None : BattleQuestionState(), Serializable
+        data class Offer(val from: ClientEnemyPlayer) : BattleQuestionState(), Serializable
     }
 
     override fun onEnter() {
         Global.player.location.x = 16 * 18f
         Global.player.location.y = 16 * 28f
+    }
+
+    init {
         val random = Random(System.currentTimeMillis())
+        gymEnemies = arrayListOf(enemies.takeRandom(), enemies.takeRandom(), enemies.takeRandom())
+        sceneable.manager.addScene(GymScene(sceneable, gymEnemies, "01"))
         enemies.forEach {
-            it.location.y = 16 * 18f
-            it.location.x = 16 * random.nextInt(4,18).toFloat()
+            it.location.x = random.nextInt(map.getWidth() / 8, map.getWidth() - map.getWidth() / 8).toFloat()
+            it.location.y = random.nextInt(map.getHeight() / 8, map.getHeight() - map.getHeight() / 8).toFloat()
         }
     }
 
+    override fun onDebugDraw(g: Graphics) = Unit
 
-    override val name: SceneType
-        get() = SceneType.Gym(badge)
+    override fun setVisible() {
+        HudManager.setVisible(LifeHud)
+        HudManager.setVisible(EnergyHud)
+    }
 
     override fun render(g: Graphics) {
         map.render(g)
         Global.player.render3d(g)
         enemies.forEach {
+            //it.render3d(g)
             it.render(g)
         }
         PokeGameClient.players.forEach { it.value.render(g) }
+    }
+
+    internal fun loadOverlayMap(overlayMapFile: String): TileMap? {
+        if (!File(overlayMapFile).exists()) return null
+
+        try {
+            FileInputStream(overlayMapFile).use { fis ->
+                ObjectInputStream(fis).use { ois ->
+                    val mapModel = ois.readObject() as TileMapModel
+                    val currentMapOverlay = TileMap(mapModel)
+                    currentMapOverlay.initializeMap()
+                    return currentMapOverlay
+                }
+            }
+        } catch (e: ClassNotFoundException) {
+            e.printStackTrace()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
     }
 
     fun input(keys: BooleanArray, typedKey: BooleanArray) {
@@ -132,38 +166,21 @@ class GymScene(
         }
     }
 
-    internal fun loadOverlayMap(overlayMapFile: String): TileMap? {
-        if (!File(overlayMapFile).exists()) return null
-        try {
-            FileInputStream(overlayMapFile).use { fis ->
-                ObjectInputStream(fis).use { ois ->
-                    val mapModel = ois.readObject() as TileMapModel
-                    val currentMapOverlay = TileMap(mapModel)
-                    currentMapOverlay.initializeMap()
-                    return currentMapOverlay
-                }
-            }
-        } catch (e: ClassNotFoundException) {
-            e.printStackTrace()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return null
-    }
-
     override fun automate() {
         super.automate()
-        val tileAtPoint = map.getObjectTileAtPoint(Global.player.location.x.toDouble(), Global.player.location.y.toDouble()) ?: return
-        if (Global.player.overlaps(tileAtPoint)) {
-            tileAtPoint.collisionDetection(Global.player)
-            //Global.player.pushOutOf(tileAtPoint)
+        val tileAtPoint = map.getObjectTileAtPoint(Global.player.location.x.toDouble(), Global.player.location.y.toDouble())
+        if (tileAtPoint != null) {
+            val tile = if(Global.player.location.y < width / 2) sceneable.manager.getScene(SceneType.Gym("01")) else sceneable.manager.getScene(SceneType.SandScene)
+            TransitionManager.transition = object : TransitionManager.OnTransition {
+                override fun onTransition(tile: Scene?) {
+                    sceneable.manager.setCurrentScene(tile!!.name)
+                }
+            }
+            TransitionManager.setFor(tile)
         }
         enemies.forEach { enemy ->
             initiate(enemy)
         }
-
     }
 
     fun initiate(enemy: EnemyPlayer) {
@@ -178,7 +195,6 @@ class GymScene(
         if (!enemy.canFight() || !Global.player.canFight()) return
         PokeGameClient.sendBattleOffer(enemy)
     }
-
 
     fun fight(enemy: EnemyPlayer) {
         TransitionManager.transition = object : TransitionManager.OnTransition {
@@ -222,3 +238,5 @@ class GymScene(
         }
     }
 }
+
+

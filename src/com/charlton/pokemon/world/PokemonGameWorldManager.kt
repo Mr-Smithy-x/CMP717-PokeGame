@@ -11,8 +11,9 @@ import com.charlton.network.client.PokeGameClient
 import com.charlton.pokemon.Global
 import com.charlton.pokemon.PokemonContainer
 import com.charlton.pokemon.models.Pokemon
-import com.charlton.pokemon.scene.DefaultScene
+import com.charlton.pokemon.scene.SandSceneOne
 import com.charlton.pokemon.scene.IntroScene
+import com.charlton.pokemon.scene.SandSceneTwo
 import java.awt.Graphics
 import kotlin.random.Random
 
@@ -24,10 +25,10 @@ class PokemonGameWorldManager(container: PokemonContainer, startScene: SceneType
 
     init {
         val enemies = PokemonGenerator.generateEnemy(24, 52)
+        val n = enemies.size / 2
 
         HudManager.addHud(LifeHud)
         HudManager.addHud(EnergyHud)
-
 
         val random = Random(System.currentTimeMillis())
         val id = random.nextInt(1, 387)
@@ -35,19 +36,12 @@ class PokemonGameWorldManager(container: PokemonContainer, startScene: SceneType
 
         Global.player.addPokemon(Pokemon(id, Global.pokemonNames[id], level))
         Global.player.gravityRate = 0f
-        var w = 0
-        var h = 0
         manager.addScene(IntroScene(this))
-        manager.addScene(DefaultScene(this, enemies).apply {
-            w = map.width as Int
-            h = map.height as Int
-        })
+        manager.addScene(SandSceneOne(this, arrayListOf(*enemies.take(n).toTypedArray())))
+        manager.addScene(SandSceneTwo(this, arrayListOf(*enemies.take(n).toTypedArray())))
         manager.setCurrentScene(startScene)
         TransitionManager.tile = manager.getCurrent()
-        Global.player.location.apply {
-        //    x = (w / 4).toFloat()
-          //  y = (h / 2).toFloat()
-        }
+        Global.player.location
         PokeGameClient.connect()
     }
 
@@ -74,9 +68,6 @@ class PokemonGameWorldManager(container: PokemonContainer, startScene: SceneType
     override fun automate() {
         manager.getCurrent()?.automate()
         Global.player.update()
-        //Global.player.updateGravityX()
-        //Global.player.updateGravityY()
-        //Global.player.updateGravity()
     }
 
 }

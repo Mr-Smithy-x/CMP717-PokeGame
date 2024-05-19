@@ -22,4 +22,5 @@ abstract class Scene(protected val sceneable: SceneManager.Sceneable) : Renderab
     open fun getScene(sceneName: SceneType): Scene? = sceneable.manager.getScene(sceneName)
     open fun setHidden() = Unit
     open fun setVisible() = Unit
+    open fun onEnter() = Unit
 }

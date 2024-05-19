@@ -99,7 +99,7 @@ abstract class AnimatedObject<T, F : FileFormat?> : ImageObject, Renderable, Cam
 
     // Draws the sprite's current image based on its current state.
     override fun render(g: Graphics) {
-        if (canRender(GlobalCamera2D)) {
+        //if (canRender(GlobalCamera2D)) {
             val currentFrame: Image = currentFrame ?: return
             g.drawImage(
                 currentFrame,
@@ -112,7 +112,7 @@ abstract class AnimatedObject<T, F : FileFormat?> : ImageObject, Renderable, Cam
                 drawActualImageBounds(currentFrame, g)
                 drawBounds(g)
             }
-        }
+        //}
         isActive = false
     }
 

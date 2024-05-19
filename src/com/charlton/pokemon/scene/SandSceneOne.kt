@@ -12,6 +12,7 @@ import com.charlton.gameengine.world.scenes.SceneType
 import com.charlton.mapeditor.model.TileMap
 import com.charlton.mapeditor.model.TileMapModel
 import com.charlton.network.client.PokeGameClient
+import com.charlton.network.cmds.Battle
 import com.charlton.pokemon.Global
 import com.charlton.pokemon.models.ClientEnemyPlayer
 import com.charlton.pokemon.models.EnemyPlayer
@@ -24,14 +25,16 @@ import java.awt.event.KeyEvent
 import java.io.*
 import kotlin.random.Random
 
-open class DefaultScene(sceneable: SceneManager.Sceneable, private val enemies: ArrayList<EnemyPlayer>) :
+open class SandSceneOne(sceneable: SceneManager.Sceneable, private val enemies: ArrayList<EnemyPlayer>) :
     Scene(sceneable) {
 
-    override val map: TileMap = loadOverlayMap("assets/tiles/base_map.tilemap")!!
+    override val map: TileMap = loadOverlayMap("assets/tiles/sand_map.tilemap")!!
 
-    override val name: SceneType = SceneType.Default
+    override val mainTrack: GlobalSoundTrack.Track = GlobalSoundTrack.Track.ROUTE119
+
+    override val name: SceneType = SceneType.SandScene
+
     private var gymEnemies = arrayListOf<EnemyPlayer>()
-
 
     private var state: BattleQuestionState = BattleQuestionState.None
 
@@ -40,10 +43,11 @@ open class DefaultScene(sceneable: SceneManager.Sceneable, private val enemies: 
         data class Offer(val from: ClientEnemyPlayer) : BattleQuestionState(), Serializable
     }
 
+
     init {
         val random = Random(System.currentTimeMillis())
-        gymEnemies = arrayListOf(enemies.takeRandom(), enemies.takeRandom(), enemies.takeRandom())
-        sceneable.manager.addScene(GymScene(sceneable, gymEnemies, "01"))
+        //gymEnemies = arrayListOf(enemies.takeRandom(), enemies.takeRandom(), enemies.takeRandom())
+        //sceneable.manager.addScene(GymScene(sceneable, gymEnemies, "01"))
         enemies.forEach {
             it.location.x = random.nextInt(map.getWidth() / 8, map.getWidth() - map.getWidth() / 8).toFloat()
             it.location.y = random.nextInt(map.getHeight() / 8, map.getHeight() - map.getHeight() / 8).toFloat()
@@ -61,89 +65,42 @@ open class DefaultScene(sceneable: SceneManager.Sceneable, private val enemies: 
         map.render(g)
         Global.player.render3d(g)
         enemies.forEach {
-            it.render3d(g)
+            //it.render3d(g)
+            it.render(g)
         }
         PokeGameClient.players.forEach { it.value.render(g) }
     }
 
-    override val mainTrack: GlobalSoundTrack.Track = GlobalSoundTrack.Track.ROUTE119
-
     internal fun loadOverlayMap(overlayMapFile: String): TileMap? {
-        if (File(overlayMapFile).exists()) {
-            try {
-                FileInputStream(overlayMapFile).use { fis ->
-                    ObjectInputStream(fis).use { ois ->
-                        val mapModel = ois.readObject() as TileMapModel
-                        val currentMapOverlay = TileMap(mapModel)
-                        currentMapOverlay.initializeMap()
-                        return currentMapOverlay
-                    }
+        if (!File(overlayMapFile).exists()) return null
+
+        try {
+            FileInputStream(overlayMapFile).use { fis ->
+                ObjectInputStream(fis).use { ois ->
+                    val mapModel = ois.readObject() as TileMapModel
+                    val currentMapOverlay = TileMap(mapModel)
+                    currentMapOverlay.initializeMap()
+                    return currentMapOverlay
                 }
-            } catch (e: ClassNotFoundException) {
-                e.printStackTrace()
-            } catch (e: IOException) {
-                e.printStackTrace()
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
+        } catch (e: ClassNotFoundException) {
+            e.printStackTrace()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         return null
     }
 
-    fun _2DMovement(keys: BooleanArray, typedKey: BooleanArray) {
-        if ((keys[KeyEvent.VK_LEFT] || keys[KeyEvent.VK_A])) {
-            //Global.player.accelerationX(-1f)
-            if (Global.player.location.x > 0 + Global.player.size.width / 4) {
-                Global.player.setSpritePoseAndMove(ImageObject.Pose.LEFT, 5f)
-            } else if (Global.player.location.x < 0 + Global.player.size.width / 4) {
-                Global.player.location.x = Global.player.size.width / 4
-            }
-        }
-        if ((keys[KeyEvent.VK_RIGHT] || keys[KeyEvent.VK_D])) {
-            if (Global.player.location.x < map.getWidth() - Global.player.size.width) {
-                Global.player.setSpritePoseAndMove(ImageObject.Pose.RIGHT, 5f)
-            } else if (Global.player.location.x > map.getWidth() - Global.player.size.width) {
-                Global.player.location.x = map.getWidth().toFloat() - Global.player.size.width
-            }
-        }
-        if ((keys[KeyEvent.VK_UP] || keys[KeyEvent.VK_W])) {
-            if (Global.player.location.y > 0) {
-                Global.player.setSpritePoseAndMove(ImageObject.Pose.UP, 5f)
-            } else if (Global.player.location.y < 0) {
-                Global.player.location.y = 0f
-            }
-        }
-        if ((keys[KeyEvent.VK_DOWN] || keys[KeyEvent.VK_S])) {
-            if (Global.player.location.y < map.getHeight()) {
-                Global.player.setSpritePoseAndMove(ImageObject.Pose.DOWN, 5f)
-            } else if (Global.player.location.y > map.getHeight()) {
-                Global.player.location.y = map.getHeight().toFloat()
-            }
-        }
-        if ((keys[KeyEvent.VK_Z])) {
-            //Global.player.accelerationY(1f)
-            //Global.player.moveDown(5f)
-            //GlobalCamera.moveIn(1f)
-            //Global.player.location.z = minOf(20f,  Global.player.location.z + 0.25f)
-        }
-        if ((keys[KeyEvent.VK_X])) {
-            //player.rotateX(5)
-            //GlobalCamera.moveOut(1f)
-            //Global.player.location.z = maxOf(1f,  Global.player.location.z - 0.25f)
-        }
-        if ((keys[KeyEvent.VK_Y])) {
-            //player.rotateY(5)
-            println(Global.player.getHeight())
-        }
-    }
-
-    fun _3DMovement(keys: BooleanArray, typedKey: BooleanArray) {
+    fun input(keys: BooleanArray, typedKey: BooleanArray) {
 
         fun check() {
             PokeGameClient.players.values.forEach { enemy ->
                 initiate(enemy)
             }
         }
+
         if ((keys[KeyEvent.VK_LEFT] || keys[KeyEvent.VK_A])) {
             //Global.player.accelerationX(-1f)
             if (Global.player.location.x > 0 + Global.player.size.width / 4) {
@@ -198,9 +155,8 @@ open class DefaultScene(sceneable: SceneManager.Sceneable, private val enemies: 
 
     override fun manual(keys: BooleanArray, typedKey: BooleanArray) {
         super.manual(keys, typedKey)
-        //_2DMovement(keys, typedKey)
         if (state === BattleQuestionState.None) {
-            _3DMovement(keys, typedKey)
+            input(keys, typedKey)
         } else if (state is BattleQuestionState.Offer) {
             handleOffer((state as BattleQuestionState.Offer).from)
         }
@@ -215,7 +171,7 @@ open class DefaultScene(sceneable: SceneManager.Sceneable, private val enemies: 
             //if (tileAtPoint.isCollisionEnabled == true) {
             //tileAtPoint.collisionDetection(Global.player)
 
-            val tile = sceneable.manager.getScene(SceneType.Gym("01")) ?: return
+            val tile = sceneable.manager.getScene(SceneType.SandSceneTwo) ?: return
 
             TransitionManager.transition = object : TransitionManager.OnTransition {
                 override fun onTransition(tile: Scene?) {
@@ -229,10 +185,8 @@ open class DefaultScene(sceneable: SceneManager.Sceneable, private val enemies: 
             TransitionManager.setFor(tile)
             //}
         }
-        if (inDebuggingMode()) {
-            enemies.forEach { enemy ->
-                initiate(enemy)
-            }
+        enemies.forEach { enemy ->
+            initiate(enemy)
         }
     }
 
@@ -259,11 +213,11 @@ open class DefaultScene(sceneable: SceneManager.Sceneable, private val enemies: 
             }
         }
         val tile = sceneable.manager.getScene(SceneType.Battle) ?: run {
-            val scene = BattleScene.create(sceneable, enemy)
+            val scene = BattleScene.create(sceneable, enemy, name)
             sceneable.manager.addScene(scene)
             scene
         }
-        (tile as BattleScene).initialize(enemy)
+        (tile as BattleScene).initialize(enemy, name)
         TransitionManager.setFor(tile)
     }
 
@@ -272,18 +226,22 @@ open class DefaultScene(sceneable: SceneManager.Sceneable, private val enemies: 
             state = BattleQuestionState.Offer(enemy)
         } else if (state is BattleQuestionState.Offer) {
             state = BattleQuestionState.None
-            Dialog.questionWindow("You got an offer to battle from ${enemy.name}(${enemy.id})!", "${enemy.name}(${enemy.id}) wants to battle you with ${
-                enemy.pokemon.joinToString(
-                    ", "
-                ) { it.name + " (${it.level})" }
-            }. Do you accept?", {
-                PokeGameClient.sendBattleAnswer(enemy, PokeGameClient.Battle.Answer.YES)
-                fight(enemy)
-            }, {
-                PokeGameClient.sendBattleAnswer(enemy, PokeGameClient.Battle.Answer.NO)
-            }, {
-                PokeGameClient.sendBattleAnswer(enemy, PokeGameClient.Battle.Answer.NO)
-            })
+            Dialog.questionWindow("You got an offer to battle from ${enemy.name}(${enemy.id})!",
+                "${enemy.name}(${enemy.id}) wants to battle you with ${
+                    enemy.pokemon.joinToString(
+                        ", "
+                    ) { it.name + " (${it.level})" }
+                }. Do you accept?",
+                {
+                    PokeGameClient.sendBattleAnswer(enemy, Battle.Answer.YES)
+                    fight(enemy)
+                },
+                {
+                    PokeGameClient.sendBattleAnswer(enemy, Battle.Answer.NO)
+                },
+                {
+                    PokeGameClient.sendBattleAnswer(enemy, Battle.Answer.NO)
+                })
         }
     }
 }
